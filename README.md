@@ -481,3 +481,70 @@ a project. That was true of pre-projects data — and equally true of anyone
 legitimately removed from every project, who came back as a member on the next
 boot. Caught in the live database. It is now gated on a one-time marker in a
 `meta` table rather than on the shape of the data.
+
+## Deployment
+
+Repo: `ARYANPANWAR893/sitepulse` (private). Vercel project `sitepulse`, connected
+to `main` — push and it deploys.
+
+    https://sitepulse-murex.vercel.app
+
+### The thing to know first
+
+**Data does not survive on Vercel.** `node:sqlite` writes to a file; Vercel's
+function filesystem is read-only except `/tmp`, `/tmp` belongs to one instance,
+and it is wiped on cold start. So `AUTH_DB_PATH=/tmp/sitepulse.db` gives a
+database that works within an instance and is gone on the next one. Two users
+can land on different instances and see different data.
+
+This is a deliberate demo-only trade, not an oversight. The demo seed below is
+what makes it survivable.
+
+For anything real, move to a host with a persistent disk — Fly.io, Railway,
+Render. That needs **zero code change**: mount a volume and point
+`AUTH_DB_PATH` at it. Turso or Postgres would instead mean converting the whole
+synchronous data layer (`DatabaseSync`, `tx()` with SAVEPOINTs, every
+`prepare().get/run/all`) to async.
+
+### Node version
+
+`engines.node` is `>=24`. `node:sqlite` is only unflagged from Node 24, and
+Vercel's default is 24.x. Do not drop the project to 22.x in Settings — the
+database module will fail to load.
+
+### Environment variables
+
+Set for **Production** and **Preview**:
+
+| Variable | Value | Why |
+| --- | --- | --- |
+| `AUTH_SECRET` | 48 random bytes, base64url | Required. `npm run gen-secret`. A different one from local. |
+| `AUTH_DB_PATH` | `/tmp/sitepulse.db` | Required on Vercel. Without it the app tries to write into the read-only bundle. |
+| `APP_URL` | the deployment origin | Password-reset links and the Google OAuth redirect. |
+| `DEMO_EMAIL` | e.g. `demo@sitepulse.app` | Seeds a demo account on cold start. |
+| `DEMO_PASSWORD` | 8+ chars | No default on purpose — a known credential on a public URL is an open door. |
+| `DEMO_NAME` | display name | Optional. |
+| `REQUIRE_PHONE_VERIFICATION` | `false` | SMS needs a paid Indian provider; leave off. |
+
+Not set, and deliberately: `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` are tied
+to `localhost` redirect URIs. The sign-in button only renders when both are
+present, so it stays hidden until you register the deployment origin in the
+Google console and add them. `RESEND_API_KEY` is likewise unset — email OTP
+codes print to the Vercel function log.
+
+### The demo seed
+
+`src/lib/seed.ts`, called once per instance from the root layout. Inert unless
+`DEMO_EMAIL` **and** `DEMO_PASSWORD` are both set. On an empty database it
+creates a verified account, a project, a five-person hierarchy and a
+ten-activity schedule with logic links — so a cold start comes up usable rather
+than showing a login page nobody can get past.
+
+Unset those two variables on a host with a real disk and it never runs.
+
+### Deploying by hand
+
+```bash
+npx vercel link --yes --project sitepulse
+npx vercel deploy --prod
+```
