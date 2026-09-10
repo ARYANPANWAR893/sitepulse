@@ -15,6 +15,11 @@ const KIND_LABELS: Record<EventKind, string> = {
   status_changed: "Status changed", progress_changed: "Progress changed",
   person_added: "Person added", person_moved: "Reporting line changed",
   person_removed: "Person removed", role_changed: "Role changed",
+  activity_updated: "Activity updated", schedule_imported: "Schedule imported",
+  progress_reported: "Field report", evidence_added: "Evidence added",
+  review_decided: "Report reviewed",
+  match_proposed: "Match proposed", match_auto_linked: "Match auto-linked",
+  match_decided: "Match decided",
 };
 
 function ago(ms: number): string {

@@ -9,6 +9,7 @@ const NAV = [
   // Above Tasks on purpose: the schedule is the system of record, and the task
   // list is the slice of it that has been handed to someone.
   { href: "/dashboard/schedule", label: "Schedule" },
+  { href: "/dashboard/reports", label: "Field reports" },
   { href: "/dashboard/tasks", label: "Tasks" },
   { href: "/dashboard/people", label: "People" },
   { href: "/dashboard/roles", label: "Roles & permissions" },

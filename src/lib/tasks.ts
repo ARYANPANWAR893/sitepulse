@@ -44,6 +44,9 @@ export const EVENT_KINDS = [
   "assigned", "reassigned", "unassigned", "delegated",
   "status_changed", "progress_changed",
   "person_added", "person_moved", "person_removed", "role_changed",
+  "activity_updated", "schedule_imported", "progress_reported",
+  "evidence_added", "review_decided",
+  "match_proposed", "match_auto_linked", "match_decided",
 ] as const;
 export type EventKind = (typeof EVENT_KINDS)[number];
 

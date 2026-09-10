@@ -387,6 +387,100 @@ function installScheduleTables(db: DatabaseSync): void {
     CREATE INDEX IF NOT EXISTS idx_pe_activity ON progress_events(activity_id, reported_at);
     CREATE INDEX IF NOT EXISTS idx_pe_review ON progress_events(project_id, review_state, reported_at);
 
+    -- What an extraction made of one report.
+    --
+    -- Separate from progress_events, not folded into it, for three reasons:
+    -- the same report can be re-read by a better model without destroying what
+    -- the last one thought; an extraction is a *reading* and may be wrong in
+    -- ways the raw text is not; and the raw text must survive any provider
+    -- being swapped out. progress_events stays the inbound record; this is the
+    -- understanding of it.
+    --
+    -- Every column here is nullable on purpose. A field report that says
+    -- nothing about location must store a null location, never a guess.
+    CREATE TABLE IF NOT EXISTS field_events (
+      id           TEXT PRIMARY KEY,
+      project_id   TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      report_id    TEXT NOT NULL REFERENCES progress_events(id) ON DELETE CASCADE,
+      work         TEXT,          -- "Foundation excavation"
+      progress     INTEGER,       -- 0-100
+      status       TEXT,
+      event_date   TEXT,          -- resolved to ISO from "today"/"yesterday"
+      date_phrase  TEXT,          -- the words that produced it
+      location     TEXT,
+      discipline   TEXT,
+      quantity     REAL,
+      unit         TEXT,
+      activity_ref TEXT,          -- an Activity ID quoted in the text
+      people       TEXT,          -- JSON array
+      equipment    TEXT,          -- JSON array
+      materials    TEXT,          -- JSON array
+      context      TEXT,          -- JSON array of leftover phrases
+      raw_text     TEXT NOT NULL, -- copied so an extraction is readable alone
+      provider     TEXT NOT NULL, -- mock | openai-compatible | ...
+      model        TEXT,
+      model_version TEXT,
+      ok           INTEGER NOT NULL DEFAULT 1,  -- 0 when the provider output was unusable
+      error        TEXT,
+      raw_output   TEXT,          -- exactly what the provider returned
+      created_at   INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_fe_report ON field_events(report_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_fe_project ON field_events(project_id, created_at);
+
+    -- One scoring pass. Append-only: re-running the matcher with different
+    -- weights or a better model must not erase what the last run proposed,
+    -- because the decision a human made was made against *that* run.
+    CREATE TABLE IF NOT EXISTS match_runs (
+      id             TEXT PRIMARY KEY,
+      project_id     TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      report_id      TEXT NOT NULL REFERENCES progress_events(id) ON DELETE CASCADE,
+      field_event_id TEXT REFERENCES field_events(id) ON DELETE SET NULL,
+      provider       TEXT NOT NULL,
+      model          TEXT,
+      weights        TEXT NOT NULL,   -- JSON, the exact weighting used
+      considered     INTEGER NOT NULL DEFAULT 0,  -- activities scored
+      top_score      REAL,
+      outcome        TEXT NOT NULL,   -- auto_link_proposed | review | no_candidates
+      created_at     INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_mr_report ON match_runs(report_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_mr_project ON match_runs(project_id, created_at);
+
+    -- The ranked shortlist for one run, with every signal that produced the
+    -- score kept alongside it. Storing the breakdown is what lets the UI say
+    -- *why* rather than just how much.
+    CREATE TABLE IF NOT EXISTS match_candidates (
+      id          TEXT PRIMARY KEY,
+      run_id      TEXT NOT NULL REFERENCES match_runs(id) ON DELETE CASCADE,
+      project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      activity_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      rank        INTEGER NOT NULL,
+      score       REAL NOT NULL,
+      signals     TEXT NOT NULL,   -- JSON: { semantic: 0.81, location: 1, ... }
+      created_at  INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_mc_run ON match_candidates(run_id, rank);
+    CREATE INDEX IF NOT EXISTS idx_mc_activity ON match_candidates(activity_id);
+
+    -- What a human (or the auto-link rule) concluded about a run. Append-only:
+    -- a reversal is a second row, so "who decided what, when, against which
+    -- run" survives being changed later.
+    CREATE TABLE IF NOT EXISTS match_decisions (
+      id           TEXT PRIMARY KEY,
+      project_id   TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      report_id    TEXT NOT NULL REFERENCES progress_events(id) ON DELETE CASCADE,
+      run_id       TEXT REFERENCES match_runs(id) ON DELETE SET NULL,
+      activity_id  TEXT REFERENCES tasks(id) ON DELETE SET NULL,
+      decision     TEXT NOT NULL,   -- linked | rejected | deferred | auto_linked
+      decided_by   TEXT,            -- person id; NULL for the owner or the system
+      automatic    INTEGER NOT NULL DEFAULT 0,
+      score        REAL,
+      note         TEXT,
+      created_at   INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_md_report ON match_decisions(report_id, created_at);
+
     -- Metadata only. Bytes live wherever uri points; nothing in this app
     -- stores files yet, and pretending otherwise would be worse than saying so.
     CREATE TABLE IF NOT EXISTS evidence (
@@ -508,6 +602,33 @@ function installGuards(db: DatabaseSync): void {
     CREATE TRIGGER IF NOT EXISTS trg_progress_pct_ins
     BEFORE INSERT ON progress_events WHEN NEW.progress IS NOT NULL AND (NEW.progress < 0 OR NEW.progress > 100)
     BEGIN SELECT RAISE(ABORT, 'progress: must be between 0 and 100'); END;
+
+    -- The last line of defence against a bad extraction. Application code
+    -- coerces every provider field before it gets here; these make a coercion
+    -- bug fail loudly instead of writing 4200% into the record.
+    CREATE TRIGGER IF NOT EXISTS trg_field_event_pct_ins
+    BEFORE INSERT ON field_events WHEN NEW.progress IS NOT NULL AND (NEW.progress < 0 OR NEW.progress > 100)
+    BEGIN SELECT RAISE(ABORT, 'field event: progress must be between 0 and 100'); END;
+
+    CREATE TRIGGER IF NOT EXISTS trg_field_event_project_ins
+    BEFORE INSERT ON field_events
+    BEGIN
+      SELECT CASE WHEN (SELECT project_id FROM progress_events WHERE id = NEW.report_id) IS NOT NEW.project_id
+        THEN RAISE(ABORT, 'field event: report is in another project') END;
+    END;
+
+    -- A candidate must score inside [0,1] and name an activity in the same
+    -- project as the run that produced it.
+    CREATE TRIGGER IF NOT EXISTS trg_match_candidate_ins
+    BEFORE INSERT ON match_candidates
+    BEGIN
+      SELECT CASE
+        WHEN NEW.score < 0 OR NEW.score > 1
+          THEN RAISE(ABORT, 'match candidate: score must be between 0 and 1')
+        WHEN (SELECT project_id FROM tasks WHERE id = NEW.activity_id) IS NOT NEW.project_id
+          THEN RAISE(ABORT, 'match candidate: activity is in another project')
+      END;
+    END;
   `);
 }
 

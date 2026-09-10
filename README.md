@@ -548,3 +548,130 @@ Unset those two variables on a host with a real disk and it never runs.
 npx vercel link --yes --project sitepulse
 npx vercel deploy --prod
 ```
+
+## Field report understanding and schedule matching
+
+`/dashboard/reports`. A supervisor writes plain language; SitePulse reads it,
+proposes which schedule activity it belongs to, and shows its working.
+
+    FIELD REPORT → UNDERSTAND → FIELD EVENT → CANDIDATES → SCORE → CONFIDENCE
+                                                    ↓
+                                      auto-link proposal or human review
+
+### The rule the whole layer is built around
+
+**A score never changes the schedule.** A high-confidence match proposes a
+*link* between a report and an activity, and stops. Whether the activity's
+progress actually moves is a second, separate, human act. The system is allowed
+to be confident; it is not allowed to be unilateral.
+
+That is why linking and applying are two buttons, two decisions, and two rows in
+two different tables.
+
+### Understanding
+
+`FieldEvent` carries work, progress, status, date (plus the phrase it came
+from), location, discipline, quantity, unit, a quoted activity ID, people,
+equipment, materials and leftover context.
+
+Every field is nullable and that is the contract. A report that says nothing
+about location gets `null`, never a guess — a wrong value here becomes a wrong
+match, and a confident wrong match is worse than none. The UI prints
+*not stated* rather than a blank, so nobody reads an empty cell as a bug.
+
+### The LLM boundary
+
+`lib/llm/` — nothing above it knows which provider is in use.
+
+| Provider | When |
+| --- | --- |
+| `MockProvider` | Default. Rules, no network, deterministic. Also the fallback. |
+| `OpenAiCompatibleProvider` | Groq, OpenAI, Together, OpenRouter, llama.cpp, Ollama — one adapter, since they share an endpoint. |
+
+    LLM_PROVIDER=groq
+    LLM_BASE_URL=https://api.groq.com/openai/v1
+    LLM_API_KEY=gsk_...
+    LLM_MODEL=llama-3.3-70b-versatile
+
+Gemini is deliberately absent: its request shape is genuinely different, so it
+is a second adapter rather than a config value. Add it when someone wants it.
+
+The mock is grounded, not clever — it recognises "CDU" as a location because
+*this project* has one. It cannot invent a place that does not exist.
+
+**A hosted model failing must not lose a report.** If it is down, rate-limited
+or returns prose, the reading falls back to the rules and the failure is stored
+(`field_events.ok = 0`, plus the error and the raw output). The UI says so
+rather than passing one off as the other.
+
+### Nothing malformed reaches the database
+
+`lib/llm/coerce.ts` is the airlock. Everything a provider returns passes through
+it: wrong types, wrong shape, `4200%`, a date of `2026-02-31`, JSON wrapped in
+apologies, an array where an object belongs. The worst any of it can do is
+produce nulls.
+
+Out-of-range progress becomes null rather than being clamped — clamping 4200 to
+100 would hide that the model misread something. Triggers on `field_events` and
+`match_candidates` are the backstop if a coercion bug ever gets past that.
+
+### Matching, and why not text similarity
+
+A schedule is full of activities whose names differ by a unit or a kilometre
+post. "CDU Foundation Excavation" and "VDU Foundation Excavation" are the same
+string bar one letter and completely different work. So nine signals, each 0..1:
+
+| Signal | Default weight |
+| --- | --- |
+| Quoted activity ID | 6 |
+| Semantic similarity | 3 |
+| Activity name · Location | 2 |
+| Discipline · Date compatibility | 1.5 |
+| Assignment | 1 |
+| Schedule context · Description | 0.75 |
+
+Configurable via `MATCH_WEIGHTS` (JSON), `MATCH_AUTO_LINK_AT`, `MATCH_FLOOR`,
+`MATCH_TOP_N`. The exact weights used are stored on every run, so an old score
+stays reproducible after they change. A malformed `MATCH_WEIGHTS` is ignored,
+not fatal.
+
+**A signal the report says nothing about is dropped from the weighting, not
+scored zero.** A report with no location must not penalise every activity
+equally — it simply has one less thing to go on, the denominator shrinks, and
+the confidence honestly reflects how much evidence there was.
+
+On the worked example, against a schedule containing two deliberate near-misses:
+
+    CDU Foundation Excavation    77%   location High, date High, name Good
+    CDU Foundation Preparation   63%
+    Cable Trench Excavation      53%
+    VDU Foundation Excavation    51%   location None ← the only discriminator
+
+### Embeddings
+
+`LexicalEmbeddingProvider` — hashed character 4-grams plus tokens and adjacent
+pairs, L2-normalised, 256 dims. Named honestly: it is a lexical vector, not a
+learned embedding. It survives site misspellings and needs no key, network or
+cost, so the matcher has a real semantic signal from day one. It does *not* know
+that "digging" and "excavation" mean the same thing — that needs a real model,
+and `activity_embeddings` already stores dims and model per row so the two can
+coexist while a project is re-embedded.
+
+Brute-force cosine over the whole schedule: 5000 activities × 256 floats is a
+few milliseconds. Move to sqlite-vec when a project needs more than one
+schedule's worth.
+
+### Tables
+
+| Table | Holds |
+| --- | --- |
+| `progress_events` | the raw inbound report (existing) |
+| `field_events` | one *reading* of a report — provider, model, ok/error, raw output |
+| `match_runs` | one scoring pass — provider, weights used, outcome |
+| `match_candidates` | the ranked shortlist with every signal that produced it |
+| `match_decisions` | what a human (or the auto-link rule) concluded |
+
+All four append. Re-running the matcher with a better model or different weights
+never erases what the last run proposed, because the decision a human made was
+made against *that* run and has to stay readable next to it. A reversal is a
+second decision row, not an edit.
