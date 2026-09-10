@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ensureDemoSeed } from "@/lib/seed";
 import { Big_Shoulders, Public_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -53,11 +54,16 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title, description },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Every route renders through here, so the first request on a cold instance
+  // seeds the demo database. No-op unless DEMO_EMAIL/DEMO_PASSWORD are set,
+  // and memoised so it runs once per instance rather than once per request.
+  await ensureDemoSeed();
+
   // Runs before first paint, so a pinned theme never flashes the other one.
   const noFlash = `(function(){try{var t=localStorage.getItem("sitepulse-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}})()`;
 
