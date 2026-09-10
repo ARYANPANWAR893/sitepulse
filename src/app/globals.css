@@ -1,0 +1,467 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------
+   SitePulse Design System (DS-00) — same tokens as the product app,
+   extended here with the motion layer the landing page needs.
+   ------------------------------------------------------------------ */
+
+/* Palette values live here exactly once, as -l- (light) and -d- (dark) pairs,
+   so the two schemes can never drift apart. The blocks below only *map* them
+   onto the live token names. */
+:root {
+  --l-paper: #edf0ec;
+  --l-paper-raised: #ffffff;
+  --l-paper-sunk: #e4e8e2;
+  --l-ink: #141c22;
+  --l-ink-soft: #55636b;
+  --l-line: rgba(20, 28, 34, 0.14);
+  --l-line-strong: rgba(20, 28, 34, 0.28);
+  --l-accent: #2d6e68;
+  --l-accent-strong: #1d4a46;
+  --l-accent-soft: #e2eeec;
+  /* Label colour for anything sitting ON --accent. The accent inverts between
+     schemes (dark teal on light, light teal on dark), so a fixed white label
+     drops to 2.5:1 in dark mode. This flips with it. */
+  --l-on-accent: #ffffff;
+  --l-rust: #a35630;
+  --l-rust-soft: #f4e7dd;
+  /* Darkened from #8a6d1f: the review-state readouts ("0.41", "—") are 11px on
+     --paper, where #8a6d1f measures 4.26:1 — just under AA. This reads 5.0:1. */
+  --l-amber: #7d6119;
+  --l-amber-soft: #f2ecd8;
+  --l-shadow: 0 1px 2px rgba(20, 28, 34, 0.06), 0 12px 32px -12px rgba(20, 28, 34, 0.18);
+
+  --d-paper: #10161a;
+  --d-paper-raised: #182024;
+  --d-paper-sunk: #0b1013;
+  --d-ink: #e8ece9;
+  --d-ink-soft: #9aa8a4;
+  --d-line: rgba(232, 236, 233, 0.14);
+  --d-line-strong: rgba(232, 236, 233, 0.26);
+  --d-accent: #5fb3ab;
+  --d-accent-strong: #8fd0c8;
+  --d-accent-soft: #1c2e2c;
+  --d-on-accent: #0d1215;
+  --d-rust: #d68a63;
+  --d-rust-soft: #2c1f18;
+  --d-amber: #d6b85f;
+  --d-amber-soft: #2c2814;
+  --d-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 18px 40px -14px rgba(0, 0, 0, 0.6);
+}
+
+/* Light is the default mapping. */
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+  --paper: var(--l-paper);
+  --paper-raised: var(--l-paper-raised);
+  --paper-sunk: var(--l-paper-sunk);
+  --ink: var(--l-ink);
+  --ink-soft: var(--l-ink-soft);
+  --line: var(--l-line);
+  --line-strong: var(--l-line-strong);
+  --accent: var(--l-accent);
+  --accent-strong: var(--l-accent-strong);
+  --accent-soft: var(--l-accent-soft);
+  --on-accent: var(--l-on-accent);
+  --rust: var(--l-rust);
+  --rust-soft: var(--l-rust-soft);
+  --amber: var(--l-amber);
+  --amber-soft: var(--l-amber-soft);
+  --shadow-raised: var(--l-shadow);
+}
+
+/* Dark applies when the OS asks for it and the user hasn't pinned light, or
+   whenever the user has explicitly pinned dark. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: var(--d-paper);
+    --paper-raised: var(--d-paper-raised);
+    --paper-sunk: var(--d-paper-sunk);
+    --ink: var(--d-ink);
+    --ink-soft: var(--d-ink-soft);
+    --line: var(--d-line);
+    --line-strong: var(--d-line-strong);
+    --accent: var(--d-accent);
+    --accent-strong: var(--d-accent-strong);
+    --accent-soft: var(--d-accent-soft);
+    --on-accent: var(--d-on-accent);
+    --rust: var(--d-rust);
+    --rust-soft: var(--d-rust-soft);
+    --amber: var(--d-amber);
+    --amber-soft: var(--d-amber-soft);
+    --shadow-raised: var(--d-shadow);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: var(--d-paper);
+  --paper-raised: var(--d-paper-raised);
+  --paper-sunk: var(--d-paper-sunk);
+  --ink: var(--d-ink);
+  --ink-soft: var(--d-ink-soft);
+  --line: var(--d-line);
+  --line-strong: var(--d-line-strong);
+  --accent: var(--d-accent);
+  --accent-strong: var(--d-accent-strong);
+  --accent-soft: var(--d-accent-soft);
+  --on-accent: var(--d-on-accent);
+  --rust: var(--d-rust);
+  --rust-soft: var(--d-rust-soft);
+  --amber: var(--d-amber);
+  --amber-soft: var(--d-amber-soft);
+  --shadow-raised: var(--d-shadow);
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-raised: var(--paper-raised);
+  --color-paper-sunk: var(--paper-sunk);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-rust: var(--rust);
+  --color-rust-soft: var(--rust-soft);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+
+  --font-display: var(--font-big-shoulders), "Arial Narrow", system-ui, sans-serif;
+  --font-body: var(--font-public-sans), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+* {
+  border-color: var(--line);
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* `clip`, not `hidden` — `overflow-x: hidden` makes <body> a scroll
+     container, which silently breaks #anchor links and scrollIntoView. */
+  overflow-x: clip;
+}
+
+::selection {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Faint engineering grid, drawn behind everything ------------------- */
+.blueprint-grid {
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 52px 52px;
+  opacity: 0.5;
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 5%, transparent 70%);
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 5%, transparent 70%);
+}
+
+/* ------------------------------------------------------------------
+   Motion layer
+   ------------------------------------------------------------------ */
+
+@keyframes sp-reveal-up {
+  from { opacity: 0; transform: translate3d(0, 22px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes sp-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes sp-scale-in {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes sp-pulse-ring {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
+  70% { box-shadow: 0 0 0 12px color-mix(in srgb, var(--accent) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent); }
+}
+
+@keyframes sp-dash {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes sp-flow {
+  to { stroke-dashoffset: -400; }
+}
+
+@keyframes sp-caret {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes sp-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes sp-sheen {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* Scroll reveal — JS adds .is-visible via IntersectionObserver -------- */
+
+/* Scroll reveal — JS adds .is-visible via IntersectionObserver -------- */
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, 22px, 0);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Above-the-fold entrance — pure CSS, so the hero is never blank while JS
+   boots (the IntersectionObserver reveal is for below-the-fold only). */
+.rise {
+  animation: sp-reveal-up 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.spin-slow { animation: sp-float 6s ease-in-out infinite; }
+.pulse-ring { animation: sp-pulse-ring 2.4s ease-out infinite; }
+.caret { animation: sp-caret 1s step-end infinite; }
+
+.sheen {
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    color-mix(in srgb, var(--accent) 14%, transparent) 45%,
+    color-mix(in srgb, var(--accent) 14%, transparent) 55%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  animation: sp-sheen 2.2s linear infinite;
+}
+
+/* Component classes live in @layer components so plain Tailwind utilities
+   still beat them — an unlayered `.btn { display: inline-flex }` silently
+   overrides `hidden`, which left the header CTA visible on mobile. */
+@layer base {
+  /* Press feedback on EVERY button, not only .btn. The dashboard panels are
+     full of bare <button>s — Close, the tab toggles, the tree rows — which
+     acknowledged a tap with nothing at all. Base layer, so any Tailwind
+     transform/cursor utility still wins. */
+  button:not(:disabled),
+  summary,
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  button {
+    transition:
+      transform 0.12s ease,
+      color 0.18s ease,
+      background-color 0.18s ease,
+      border-color 0.18s ease;
+  }
+  button:not(:disabled):active {
+    transform: scale(0.97);
+    transition-duration: 0.06s;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    button:not(:disabled):active {
+      transform: none;
+    }
+  }
+}
+
+@layer components {
+  /* Buttons -------------------------------------------------------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.55rem;
+    /* 44px min is the touch-target floor; padding alone left these at 37-39px. */
+    min-height: 44px;
+    padding: 0.7rem 1.15rem;
+    font-weight: 600;
+    font-size: 0.92rem;
+    line-height: 1;
+    transition: transform 0.14s ease, box-shadow 0.2s ease, background-color 0.2s ease,
+      border-color 0.2s ease, filter 0.14s ease;
+  }
+  .btn:hover:not(:disabled) { transform: translateY(-1px); }
+  /* Snaps back faster than it lifts, so a click reads as a press, not a bounce. */
+  .btn:active:not(:disabled) {
+    transform: translateY(1px) scale(0.97);
+    filter: brightness(0.94);
+    transition-duration: 0.06s;
+  }
+  .btn:disabled { cursor: not-allowed; }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--on-accent);
+    box-shadow: var(--shadow-raised);
+  }
+  .btn-primary:hover {
+    background: var(--accent-strong);
+    box-shadow: 0 2px 4px rgba(20, 28, 34, 0.1),
+      0 20px 44px -14px color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+
+  .btn-ghost {
+    border: 1px solid var(--line-strong);
+    color: var(--ink);
+    background: transparent;
+  }
+  .btn-ghost:hover {
+    border-color: var(--accent);
+    color: var(--accent-strong);
+    background: color-mix(in srgb, var(--accent) 7%, transparent);
+  }
+
+  /* Every interactive row in the mobile menu clears the 44px touch floor. */
+  .menu-link {
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+    padding: 0 0.25rem;
+    border-bottom: 1px solid var(--line);
+    transition: color 0.18s ease, padding-left 0.18s ease;
+  }
+  .menu-link:hover,
+  .menu-link:focus-visible {
+    color: var(--accent-strong);
+    padding-left: 0.6rem;
+  }
+}
+
+/* Mobile menu ------------------------------------------------------ */
+@keyframes sp-menu-in {
+  from { opacity: 0; transform: translate3d(0, -8px, 0); }
+  to { opacity: 1; transform: none; }
+}
+.menu-panel { animation: sp-menu-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Visible keyboard focus everywhere, matched to the accent. */
+:where(a, button, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 0.4rem;
+}
+
+/* Stage connector flow line -------------------------------------- */
+.flow-line {
+  stroke-dasharray: 6 10;
+  animation: sp-flow 12s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .rise { opacity: 1 !important; transform: none !important; }
+  .rise, .spin-slow, .pulse-ring, .caret, .sheen, .flow-line, .menu-panel,
+  [class*="animate-"] { animation: none !important; }
+  .menu-link:hover, .menu-link:focus-visible { padding-left: 0.25rem; }
+  /* Keep the colour change on press; drop the movement. */
+  .btn:hover:not(:disabled) { transform: none; }
+  .btn:active:not(:disabled) { transform: none; }
+}
+
+/* ------------------------------------------------------------------
+   Modal dialog motion
+   Transition-driven, not keyframes: `allow-discrete` lets `display` and
+   `overlay` animate, so the panel eases out on close instead of vanishing.
+   `@starting-style` supplies the pre-open state. Unsupported browsers get
+   the dialog instantly, which is a fine floor.
+   ------------------------------------------------------------------ */
+
+dialog.sp-modal {
+  opacity: 0;
+  transform: translateY(10px) scale(0.985);
+  transition:
+    opacity 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    overlay 0.22s allow-discrete,
+    display 0.22s allow-discrete;
+}
+dialog.sp-modal[open] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+@starting-style {
+  dialog.sp-modal[open] {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+}
+
+dialog.sp-modal::backdrop {
+  opacity: 0;
+  transition:
+    opacity 0.22s ease,
+    overlay 0.22s allow-discrete,
+    display 0.22s allow-discrete;
+}
+dialog.sp-modal[open]::backdrop { opacity: 1; }
+@starting-style {
+  dialog.sp-modal[open]::backdrop { opacity: 0; }
+}
+
+/* Fields settle in behind the panel, so the form reads as assembling. The
+   class is toggled by the open state, which is what re-runs this on each
+   open — an always-present class would only ever animate once, at mount. */
+.sp-stagger > * {
+  animation: sp-field-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.sp-stagger > *:nth-child(1) { animation-delay: 0.06s; }
+.sp-stagger > *:nth-child(2) { animation-delay: 0.10s; }
+.sp-stagger > *:nth-child(3) { animation-delay: 0.14s; }
+.sp-stagger > *:nth-child(4) { animation-delay: 0.18s; }
+.sp-stagger > *:nth-child(5) { animation-delay: 0.22s; }
+.sp-stagger > *:nth-child(6) { animation-delay: 0.26s; }
+.sp-stagger > *:nth-child(n + 7) { animation-delay: 0.3s; }
+@keyframes sp-field-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Spinner for a pending submit. */
+.sp-spinner {
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: sp-spin 0.6s linear infinite;
+}
+@keyframes sp-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  dialog.sp-modal,
+  dialog.sp-modal::backdrop { transition: none; }
+  .sp-stagger > *,
+  .sp-spinner { animation: none; }
+}
